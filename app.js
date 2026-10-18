@@ -432,7 +432,8 @@ function analizKur(ak) {
 }
 function fabGuncelle() { const f = $("#fabMik"); if (!f) return; f.className = "fab" + (S.kayitta ? " kayit" : ""); f.innerHTML = ic(S.kayitta ? "stop" : "mic", "b"); }   // yalniz dugmeyi guncelle: yazilan metin ve onizleme silinmesin
 let tanir = null;
-const IOS_ANA_EKRAN = () => /iPhone|iPad|iPod/.test(navigator.userAgent) && (navigator.standalone === true || (window.matchMedia && matchMedia("(display-mode: standalone)").matches));
+const IOS_CIHAZ = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const IOS_ANA_EKRAN =() => /iPhone|iPad|iPod/.test(navigator.userAgent) && (navigator.standalone === true || (window.matchMedia && matchMedia("(display-mode: standalone)").matches));
 async function mikToggle() {
   if (S.kayitta) {
     S.kayitta = false;
@@ -455,10 +456,11 @@ async function mikToggle() {
       kaydedici.onstop = () => { ak.getTracks().forEach(t => t.stop()); const m = kaydedici; kaydedici = null; S.kayitta = false; fabGuncelle(); sesPanelAc("cozum"); if (sesCtx) { try { sesCtx.close(); } catch (e) {} sesCtx = null; } sesGonder(new Blob(parcalar, {type: m.mimeType})); };
       kaydedici.start(); S.kayitta = true; analizKur(ak); fabGuncelle(); sesPanelAc("kayit"); return; } catch (e) { /* izin yok: asagidaki yedek */ }
   }
-  if (tani && !IOS_ANA_EKRAN()) {
+  if (IOS_CIHAZ()) { const m = $("#metin"); toast("iPhone: açılan klavyedeki 🎤 simgesine bas ve konuş (Safari'nin kendi dikteşi daha güvenilir)"); if (m) m.focus(); return; }
+  if (tani) {
     const r = new tani(); tanir = r; r.lang = "tr-TR"; r.interimResults = false; r.continuous = false; r.maxAlternatives = 1;
     r.onresult = e => { const m = $("#metin"); if (m) m.value = e.results[0][0].transcript; coz(); };
-    r.onerror = e => { const h = {"not-allowed": "Mikrofon/konuşma izni verilmedi: tarayıcı ayarlarından izin ver", "service-not-allowed": "Konuşma tanıma kapalı: iPhone Ayarlar → Genel → Klavye → Dikteyi Etkinleştir", "no-speech": "Ses duyulmadı, tekrar dene", "audio-capture": "Mikrofon bulunamadı", "network": "Konuşma tanıma için internet gerekli"}[e.error]; toast(h || ("Ses anlaşılamadı (" + e.error + ")")); };
+    r.onerror = e => { const h = {"not-allowed": "Mikrofon/konuşma izni verilmedi: tarayıcı ayarlarından izin ver", "service-not-allowed": "Konuşma tanıma kapalı: iPhone Ayarlar → Genel → Klavye → Dikteyi Etkinleştir", "no-speech": "Ses duyulmadı, tekrar dene", "audio-capture": "Mikrofon bulunamadı", "network": "Konuşma tanıma için internet gerekli", "aborted": "Tarayıcı dikteyi kesti: klavyedeki 🎤 simgesini kullan"}[e.error]; toast(h || ("Ses anlaşılamadı (" + e.error + ")")); };
     r.onend = () => { tanir = null; S.kayitta = false; sesPanelKapat(); fabGuncelle(); };
     try { r.start(); S.kayitta = true; fabGuncelle(); sesPanelAc("kayit"); return; } catch (e) { tanir = null; } }
   toast(IOS_ANA_EKRAN() ? "iPhone ana ekran uygulamasında tarayıcı dikteşi yok: klavyedeki 🎤 simgesine bas" : "Bu cihazda kayıt yok: klavyendeki 🎤 ile yaz"); $("#metin")?.focus();
@@ -870,6 +872,7 @@ function ilkProfilKaydet() { ayarYama({ad: $("#oa").value.trim(), cins: $("#oc")
   S.sunucuUrl = LS.get("kt.sunucuUrl") || "";
   try { const r = await fetch(taban() + "/api/durum", {headers: {"X-Kalori": "1"}, signal: AbortSignal.timeout ? AbortSignal.timeout(2500) : undefined});
     if (r.ok && location.protocol.startsWith("http")) { const j = await r.json(); S.sunucuVar = !!j.sunucu; S.ilk = !!j.ilk_kurulum; } } catch (e) {}
+  try { if (IOS_CIHAZ() && !IOS_ANA_EKRAN() && !localStorage.getItem("kt.ipucuEkran")) { localStorage.setItem("kt.ipucuEkran", "1"); setTimeout(() => toast("Uygulama gibi açmak için: Paylaş ⬆ → Ana Ekrana Ekle"), 2500); } } catch (e) {}
   if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) navigator.serviceWorker.register("sw.js").catch(() => {});
   karsilama(profiller().length ? "liste" : "yeni");
 })();
