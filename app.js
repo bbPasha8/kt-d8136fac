@@ -486,7 +486,7 @@ function yerelCoz(blob) {
       else if (d.tur === "sonuc") ok(d.metin);
       else if (d.tur === "hata") { sesIsci = null; hata(new Error(d.mesaj)); } };
     w.onerror = ev => { sesIsci = null; hata(new Error(ev.message || "işçi başlatılamadı")); };
-    w.postMessage({tur: "coz", ses}, [ses.buffer]);
+    w.postMessage({tur: "coz", model: A().sesModel || "dogru", ses}, [ses.buffer]);
   });
 }
 async function sesGonder(blob) {
@@ -697,7 +697,8 @@ function sayfaProfil() {
     <button class="btn ana" style="width:100%;margin-top:12px" onclick="sunucuBagla()">${ic("cloud")}Bağlan ve verileri aktar</button><div id="sbh" class="hata"></div>`) + `</div>`;
   const sk = a.sesKaynagi || "oto", sec = v => sk === v ? "selected" : "";
   html += `<div class="kart"><h2>${ic("mic")}Sesli giriş</h2><select onchange="ayarYama({sesKaynagi:this.value});toast('Kaydedildi')"><option value="oto" ${sec("oto")}>Otomatik: sunucu bağlıysa sunucu Whisper, değilse cihaz Whisper</option><option value="sunucu" ${sec("sunucu")}>Yalnızca sunucu Whisper (ses evde işlenir)</option><option value="yerel" ${sec("yerel")}>Yalnızca cihaz Whisper (sunucu gerekmez)</option><option value="cihaz" ${sec("cihaz")}>Tarayıcı dikteşi (Apple/Google, iPhone'da çalışmaz)</option></select>
-    <div class="sol" style="margin-top:8px">Şu an: <b>${S.kul && S.sunucuVar && (sk === "oto" || sk === "sunucu") ? "sunucu Whisper" : sk === "cihaz" ? "tarayıcı dikteşi" : "cihaz Whisper"}</b>. Cihaz Whisper ilk kullanımda ~80 MB model indirir (bir kez, sonra internetsiz çalışır); ses cihazdan çıkmaz.</div></div>`;
+    <div class="sol" style="margin-top:8px">Şu an: <b>${S.kul && S.sunucuVar && (sk === "oto" || sk === "sunucu") ? "sunucu Whisper" : sk === "cihaz" ? "tarayıcı dikteşi" : "cihaz Whisper"}</b>. Cihaz Whisper ilk kullanımda model indirir (bir kez, sonra internetsiz çalışır); ses cihazdan çıkmaz.</div>
+    <label class="l">Cihaz modeli</label><select onchange="ayarYama({sesModel:this.value});toast('Kaydedildi')"><option value="dogru" ${(a.sesModel || "dogru") === "dogru" ? "selected" : ""}>Doğru (Whisper small, ~250 MB, daha iyi anlar)</option><option value="hizli" ${a.sesModel === "hizli" ? "selected" : ""}>Hızlı (Whisper base, ~76 MB, daha az doğru)</option></select></div>`;
   html += `<div class="kart"><h2>${ic("down")}Yedek</h2><div class="sat"><button class="btn sade kucuk" onclick="disaAktar()">${ic("down", "s")}Dışa aktar (JSON)</button><label class="btn sade kucuk" style="cursor:pointer">${ic("up", "s")}İçe aktar<input type="file" accept=".json" class="gizli" onchange="iceAktar(this)"></label></div></div>
     <div class="kart"><h2>${ic("spark")}iPhone / telefona ekle</h2><div class="sol"><b>iPhone:</b> Safari'de aç → Paylaş → "Ana Ekrana Ekle" (internetsiz de açılır). <b>Android:</b> Chrome menüsü → "Uygulamayı yükle".</div><button class="btn sade kucuk" style="margin-top:8px" onclick="lisansSheet()">Kaynaklar ve lisanslar</button></div>`;
   setTimeout(ayarOnizle, 0);
