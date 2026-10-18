@@ -134,3 +134,4 @@ canvas#konfeti{position:fixed;inset:0;pointer-events:none;z-index:70}
 .mk-uy{margin-top:10px;font-size:13px;min-height:40px}
 .kanSat{display:flex!important;align-items:center;gap:10px}
 input[type=range]{-webkit-appearance:auto;appearance:auto}
+.sespanel .etk{position:absolute;top:-22px;left:6px;font-size:11px;font-weight:700;background:rgba(0,0,0,.55);color:#fff;padding:2px 9px;border-radius:10px;backdrop-filter:blur(6px)}

@@ -1,5 +1,5 @@
 /* Servis calisani: uygulamanin dosyalarini cihazda saklar; internet yokken de acilir. Verilere dokunmaz (veri kasasi ayri). */
-const SURUM = "kalori-20261018113700";
+const SURUM = "kalori-20261018115500";
 const OZ = ["./", "index.html", "app.css", "veri.js", "app.js", "ikon.svg", "ikon-180.png", "ikon-192.png", "ikon-512.png", "manifest.webmanifest", "veri/cekirdek.json", "veri/pdfjs/pdf.min.js", "veri/pdfjs/pdf.worker.min.js"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(SURUM).then(c => c.addAll(OZ)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x !== SURUM).map(x => caches.delete(x)))).then(() => self.clients.claim())); });

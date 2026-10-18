@@ -409,7 +409,8 @@ function yuvarlakDikdortgen(x, a, b, w, h, r) { x.beginPath(); x.moveTo(a + r, b
 function sesPanelAc(mod) {
   let p = $("#sesPanel"); if (!p) { p = document.createElement("div"); p.id = "sesPanel"; document.body.appendChild(p); }
   p.className = "sespanel " + mod;
-  p.innerHTML = mod === "kayit" ? `<canvas id="sesCv" width="520" height="96"></canvas><span class="sure" id="sesSure">0:00</span>` : `<span>Ses çevriliyor</span><span class="uc"><i></i><i></i><i></i></span>`;
+  const etk = sesYol === "sunucu" ? "Sunucu Whisper bağlı" : sesYol === "yerel" ? "Cihaz Whisper" : "";
+  p.innerHTML = (mod === "kayit" ? `<canvas id="sesCv" width="520" height="96"></canvas><span class="sure" id="sesSure">0:00</span>` : `<span id="sesYazi">Ses çevriliyor</span><span class="uc"><i></i><i></i><i></i></span>`) + (etk ? `<small class="etk">${etk}</small>` : "");
   if (mod === "kayit") { sesGecmis = Array(38).fill(0); kayitBas = performance.now(); cancelAnimationFrame(sesDongu); cizSes(); } else cancelAnimationFrame(sesDongu);
 }
 function sesPanelKapat() {
@@ -431,7 +432,7 @@ function analizKur(ak) {
     seviyeFn = () => { an.getByteTimeDomainData(buf); let t = 0; for (const v of buf) { const d = (v - 128) / 128; t += d * d; } yum = yum * .55 + Math.min(1, Math.sqrt(t / buf.length) * 4.2) * .45; return yum; }; } catch (e) {}
 }
 function fabGuncelle() { const f = $("#fabMik"); if (!f) return; f.className = "fab" + (S.kayitta ? " kayit" : ""); f.innerHTML = ic(S.kayitta ? "stop" : "mic", "b"); }   // yalniz dugmeyi guncelle: yazilan metin ve onizleme silinmesin
-let tanir = null;
+let tanir = null, sesYol = "";
 const IOS_CIHAZ = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const IOS_ANA_EKRAN =() => /iPhone|iPad|iPod/.test(navigator.userAgent) && (navigator.standalone === true || (window.matchMedia && matchMedia("(display-mode: standalone)").matches));
 async function mikToggle() {
@@ -444,19 +445,20 @@ async function mikToggle() {
     return;
   }
   const tani = window.SpeechRecognition || window.webkitSpeechRecognition, kaynakTercih = A().sesKaynagi || "oto", ulasilabilir = navigator.onLine !== false && !(S.esitHata && /Çevrimdışı/.test(S.esitHata) && kaynakTercih === "oto"),
-    sunucuSes = S.kul && S.sunucuVar && kaynakTercih !== "cihaz" && ulasilabilir;
-  if (kaynakTercih === "sunucu" && !sunucuSes) { toast("Sunucu bağlı değil; Profil'den bağlan ya da kaynağı değiştir"); return; }
+    sunucuSes = S.kul && S.sunucuVar && (kaynakTercih === "oto" || kaynakTercih === "sunucu") && ulasilabilir,
+    yerelSes = kaynakTercih === "yerel" || (kaynakTercih === "oto" && !sunucuSes);
+  if (kaynakTercih === "sunucu" && !sunucuSes) { toast("Sunucu bağlı değil; Profil'den bağlan ya da ses kaynağını değiştir"); return; }
   if (window.Mik && sunucuSes) {
     const r = Mik.baslat(); if (r !== "ok") { toast(r === "izin" ? "İzin ver, sonra 🎤'ya tekrar bas" : "Mikrofon başlatılamadı"); return; }
-    yerelKayit = true; S.kayitta = true; let yum = 0; seviyeFn = () => { let a = 0; try { a = Mik.seviye ? Mik.seviye() : 0; } catch (e) {} yum = yum * .5 + Math.min(1, Math.sqrt(a / 32767) * 1.5) * .5; return yum; }; fabGuncelle(); sesPanelAc("kayit"); return;
+    sesYol = "sunucu"; yerelKayit = true; S.kayitta = true; let yum = 0; seviyeFn = () => { let a = 0; try { a = Mik.seviye ? Mik.seviye() : 0; } catch (e) {} yum = yum * .5 + Math.min(1, Math.sqrt(a / 32767) * 1.5) * .5; return yum; }; fabGuncelle(); sesPanelAc("kayit"); return;
   }
-  if (sunucuSes && navigator.mediaDevices && window.MediaRecorder && window.isSecureContext) {
-    try { const ak = await navigator.mediaDevices.getUserMedia({audio: true}); parcalar = []; kaydedici = new MediaRecorder(ak);
+  if ((sunucuSes || yerelSes) && navigator.mediaDevices && window.MediaRecorder && window.isSecureContext) {
+    try { const ak = await navigator.mediaDevices.getUserMedia({audio: true}); parcalar = []; kaydedici = new MediaRecorder(ak); sesYol = sunucuSes ? "sunucu" : "yerel";
       kaydedici.ondataavailable = e => parcalar.push(e.data);
       kaydedici.onstop = () => { ak.getTracks().forEach(t => t.stop()); const m = kaydedici; kaydedici = null; S.kayitta = false; fabGuncelle(); sesPanelAc("cozum"); if (sesCtx) { try { sesCtx.close(); } catch (e) {} sesCtx = null; } sesGonder(new Blob(parcalar, {type: m.mimeType})); };
-      kaydedici.start(); S.kayitta = true; analizKur(ak); fabGuncelle(); sesPanelAc("kayit"); return; } catch (e) { /* izin yok: asagidaki yedek */ }
+      kaydedici.start(); S.kayitta = true; analizKur(ak); fabGuncelle(); sesPanelAc("kayit"); return; } catch (e) { toast("Mikrofon izni verilmedi: Ayarlar'dan bu uygulamaya mikrofon izni ver"); return; }
   }
-  if (IOS_CIHAZ()) { const m = $("#metin"); toast("iPhone: açılan klavyedeki 🎤 simgesine bas ve konuş (Safari'nin kendi dikteşi daha güvenilir)"); if (m) m.focus(); return; }
+  if (IOS_CIHAZ() && kaynakTercih === "cihaz") { const m = $("#metin"); toast("iPhone: açılan klavyedeki 🎤 simgesine bas ve konuş (Safari'nin kendi dikteşi daha güvenilir)"); if (m) m.focus(); return; }
   if (tani) {
     const r = new tani(); tanir = r; r.lang = "tr-TR"; r.interimResults = false; r.continuous = false; r.maxAlternatives = 1;
     r.onresult = e => { const m = $("#metin"); if (m) m.value = e.results[0][0].transcript; coz(); };
@@ -465,9 +467,33 @@ async function mikToggle() {
     try { r.start(); S.kayitta = true; fabGuncelle(); sesPanelAc("kayit"); return; } catch (e) { tanir = null; } }
   toast(IOS_ANA_EKRAN() ? "iPhone ana ekran uygulamasında tarayıcı dikteşi yok: klavyedeki 🎤 simgesine bas" : "Bu cihazda kayıt yok: klavyendeki 🎤 ile yaz"); $("#metin")?.focus();
 }
+let sesIsci = null;
+function sesYaziGuncelle(t) { const e = $("#sesYazi"); if (e) e.textContent = t; }
+async function sesDizi(blob) {
+  const ham = await blob.arrayBuffer(), AC = window.AudioContext || window.webkitAudioContext, c = new AC();
+  const kod = await new Promise((ok, hata) => { const r = c.decodeAudioData(ham, ok, hata); if (r && r.then) r.then(ok, hata); }); try { c.close(); } catch (e) {}
+  const n = Math.max(1, Math.round(kod.duration * 16000)), oc = new OfflineAudioContext(1, n, 16000), k = oc.createBufferSource(); k.buffer = kod; k.connect(oc.destination); k.start();
+  return (await oc.startRendering()).getChannelData(0);
+}
+function yerelCoz(blob) {
+  return new Promise(async (ok, hata) => {
+    let ses; try { ses = await sesDizi(blob); } catch (e) { return hata(new Error("ses okunamadı")); }
+    if (!sesIsci) { try { sesIsci = new Worker("veri/tf/whisper-worker.js", {type: "module"}); } catch (e) { return hata(new Error("bu tarayıcı cihaz Whisper'ı desteklemiyor")); } }
+    const w = sesIsci;
+    w.onmessage = ev => { const d = ev.data;
+      if (d.tur === "ilerleme") sesYaziGuncelle("Model iniyor %" + d.yuzde + (d.mb ? " (" + d.mb + " MB, bir kez)" : ""));
+      else if (d.tur === "cozuyor") sesYaziGuncelle("Cihazda çevriliyor");
+      else if (d.tur === "sonuc") ok(d.metin);
+      else if (d.tur === "hata") { sesIsci = null; hata(new Error(d.mesaj)); } };
+    w.onerror = ev => { sesIsci = null; hata(new Error(ev.message || "işçi başlatılamadı")); };
+    w.postMessage({tur: "coz", ses}, [ses.buffer]);
+  });
+}
 async function sesGonder(blob) {
-  try { const r = await api("POST", "/api/ses", blob, true); sesPanelKapat(); if (r.metin) { const m = $("#metin"); if (m) m.value = r.metin; coz(); } else toast("Ses anlaşılamadı"); }
-  catch (e) { sesPanelKapat(); toast("Ses çevrilemedi (" + e.message + "). Çevrimdışıysan klavyedeki 🎤'yu kullan."); }
+  try { let metin;
+    if (sesYol === "yerel") metin = await yerelCoz(blob); else { const r = await api("POST", "/api/ses", blob, true); metin = r.metin; }
+    sesPanelKapat(); if (metin) { const m = $("#metin"); if (m) m.value = metin; coz(); } else toast("Ses anlaşılamadı"); }
+  catch (e) { sesPanelKapat(); toast("Ses çevrilemedi (" + e.message + ")"); }
 }
 
 /* --- besin / mikro sayfasi --- */
@@ -669,8 +695,9 @@ function sayfaProfil() {
     <label class="l">Sunucu adresi</label><input id="sba" placeholder="https://sunucu-adresin" value="${kac((S.sun && S.sun.url) || LS.get("kt.sunucuUrl") || (S.sunucuVar ? location.origin : ""))}">
     <label class="l">Kullanıcı adı</label><input id="sbk" autocomplete="username" value="${kac(S.sun ? S.sun.ad : "")}"><label class="l">Parola</label><input id="sbp" type="password" autocomplete="current-password" onkeydown="if(event.key=='Enter')sunucuBagla()">
     <button class="btn ana" style="width:100%;margin-top:12px" onclick="sunucuBagla()">${ic("cloud")}Bağlan ve verileri aktar</button><div id="sbh" class="hata"></div>`) + `</div>`;
-  html += `<div class="kart"><h2>${ic("mic")}Sesli giriş</h2><select onchange="ayarYama({sesKaynagi:this.value});toast('Kaydedildi')"><option value="oto" ${(a.sesKaynagi || "oto") === "oto" ? "selected" : ""}>Otomatik (sunucu varsa Whisper, yoksa cihaz)</option><option value="sunucu" ${a.sesKaynagi === "sunucu" ? "selected" : ""}>Yalnızca sunucu (Whisper, sesin sunucuda işlenir)</option><option value="cihaz" ${a.sesKaynagi === "cihaz" ? "selected" : ""}>Yalnızca cihaz (Apple/Google dikteşi)</option></select>
-    <div class="sol" style="margin-top:8px">Cihaz seçeneği sunucusuz çalışır ama sesi Apple/Google işler. iPhone'da ana ekran uygulamasında tarayıcı dikteşi çalışmaz; klavyedeki 🎤 simgesini kullan.</div></div>`;
+  const sk = a.sesKaynagi || "oto", sec = v => sk === v ? "selected" : "";
+  html += `<div class="kart"><h2>${ic("mic")}Sesli giriş</h2><select onchange="ayarYama({sesKaynagi:this.value});toast('Kaydedildi')"><option value="oto" ${sec("oto")}>Otomatik: sunucu bağlıysa sunucu Whisper, değilse cihaz Whisper</option><option value="sunucu" ${sec("sunucu")}>Yalnızca sunucu Whisper (ses evde işlenir)</option><option value="yerel" ${sec("yerel")}>Yalnızca cihaz Whisper (sunucu gerekmez)</option><option value="cihaz" ${sec("cihaz")}>Tarayıcı dikteşi (Apple/Google, iPhone'da çalışmaz)</option></select>
+    <div class="sol" style="margin-top:8px">Şu an: <b>${S.kul && S.sunucuVar && (sk === "oto" || sk === "sunucu") ? "sunucu Whisper" : sk === "cihaz" ? "tarayıcı dikteşi" : "cihaz Whisper"}</b>. Cihaz Whisper ilk kullanımda ~80 MB model indirir (bir kez, sonra internetsiz çalışır); ses cihazdan çıkmaz.</div></div>`;
   html += `<div class="kart"><h2>${ic("down")}Yedek</h2><div class="sat"><button class="btn sade kucuk" onclick="disaAktar()">${ic("down", "s")}Dışa aktar (JSON)</button><label class="btn sade kucuk" style="cursor:pointer">${ic("up", "s")}İçe aktar<input type="file" accept=".json" class="gizli" onchange="iceAktar(this)"></label></div></div>
     <div class="kart"><h2>${ic("spark")}iPhone / telefona ekle</h2><div class="sol"><b>iPhone:</b> Safari'de aç → Paylaş → "Ana Ekrana Ekle" (internetsiz de açılır). <b>Android:</b> Chrome menüsü → "Uygulamayı yükle".</div><button class="btn sade kucuk" style="margin-top:8px" onclick="lisansSheet()">Kaynaklar ve lisanslar</button></div>`;
   setTimeout(ayarOnizle, 0);
