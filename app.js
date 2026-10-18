@@ -779,7 +779,7 @@ async function profilSil(ad) { if (!confirm(ad + " profili ve tüm verisi silins
 async function sunucuyaGir(url, ad, parola, kur) {
   url = (url || "").trim().replace(/\/+$/, ""); if (url && !/^https?:\/\//.test(url)) url = "https://" + url;
   const eski = S.sunucuUrl; S.sunucuUrl = url;
-  try { await api("GET", "/api/durum"); } catch (e) { S.sunucuUrl = eski; throw new Error("Sunucuya ulaşılamadı (adres, Tailscale ve izin listesi kontrol et)"); }
+  try { await api("GET", "/api/durum"); } catch (e) { S.sunucuUrl = eski; throw new Error("Sunucuya ulaşılamadı. Adres doğru mu, Tailscale açık mı? Chrome kullanıyorsan adres çubuğundaki izin simgesinden 'Yerel ağ' erişimine izin ver; olmazsa uygulamayı doğrudan sunucu adresinden aç."); }
   let r; try { r = await api("POST", kur ? "/api/kur" : "/api/giris", {ad, parola}); } catch (e) { S.sunucuUrl = eski; throw e; }
   return {url, ad: r.ad, admin: r.admin, jeton: r.jeton, esit: true};
 }
